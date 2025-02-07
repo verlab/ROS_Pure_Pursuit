@@ -201,7 +201,7 @@ void PurePursuit::cmd_generator(nav_msgs::Odometry odom)
       // Publish the ackerman_steering command
       pub_acker_.publish(cmd_acker_);
       // Publish the lookahead_marker for visualization
-      lookahead_marker_.header.frame_id = "world";
+      lookahead_marker_.header.frame_id = "map";
       lookahead_marker_.header.stamp = ros::Time::now();
       lookahead_marker_.type = visualization_msgs::Marker::SPHERE;
       lookahead_marker_.action = visualization_msgs::Marker::ADD;
