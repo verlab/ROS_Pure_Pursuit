@@ -28,7 +28,7 @@ class PurePursuit
     // Generate the command for the vehicle according to the current position and the waypoints
     void cmd_generator(nav_msgs::Odometry odom);
     // Listen to the waypoints topic
-    void waypoints_listener(nav_msgs::Path path);
+    void waypoints_listener(const nav_msgs::Path& path);
     // Transform the pose to the base_link
     KDL::Frame trans2base(const geometry_msgs::Pose& pose, const geometry_msgs::Transform& tf);
     // Eucledian distance computation
@@ -54,11 +54,13 @@ class PurePursuit
     geometry_msgs::Twist cmd_vel_;
     ackermann_msgs::AckermannDriveStamped cmd_acker_;
     visualization_msgs::Marker lookahead_marker_;
+    ros::Time last_path_stamp_;
     
     // ROS
     ros::NodeHandle nh_, nh_private_;
     ros::Subscriber sub_odom_, sub_path_;
     ros::Publisher pub_vel_, pub_acker_, pub_marker_;
+    ros::Time path_stamp_memory_;
     tf2_ros::Buffer tf_buffer_;
     tf2_ros::TransformListener tf_listener_;
     tf2_ros::TransformBroadcaster tf_broadcaster_;
@@ -67,14 +69,14 @@ class PurePursuit
 
 };
 
-PurePursuit::PurePursuit() : lookahead_distance_(1.0), v_max_(0.6), v_(v_max_), w_max_(1.0), position_tolerance_(0.1), idx_(0),
+PurePursuit::PurePursuit() : lookahead_distance_(1.0), v_max_(0.1), v_(v_max_), w_max_(1.0), position_tolerance_(0.1), idx_(0),
                              goal_reached_(false), nh_private_("~"), tf_listener_(tf_buffer_),
                              map_frame_id_("map"), robot_frame_id_("base_link"), lookahead_frame_id_("lookahead")
 {
   // Get parameters from the parameter server
   nh_private_.getParam("wheelbase", wheel_base_);
   nh_private_.getParam("lookahead_distance", lookahead_distance_);
-  //nh_private_.getParam("linear_velocity", v_, 0.1);
+  nh_private_.getParam("linear_velocity", v_);
   nh_private_.getParam("max_rotational_velocity", w_max_);
   nh_private_.getParam("position_tolerance", position_tolerance_);
   nh_private_.getParam("steering_angle_velocity", delta_vel_);
@@ -96,6 +98,7 @@ PurePursuit::PurePursuit() : lookahead_distance_(1.0), v_max_(0.6), v_(v_max_), 
 
   idx_memory = 0;
   path_loaded_ = false;
+  path_stamp_memory_ = ros::Time(0);
   
   sub_path_ = nh_.subscribe("/waypoints", 1, &PurePursuit::waypoints_listener, this);
   sub_odom_ = nh_.subscribe("/odom", 1, &PurePursuit::cmd_generator, this);
@@ -108,6 +111,19 @@ PurePursuit::PurePursuit() : lookahead_distance_(1.0), v_max_(0.6), v_(v_max_), 
 
 void PurePursuit::cmd_generator(nav_msgs::Odometry odom)
 {
+  ros::Time local_path_stamp;
+
+  if (!path_loaded_) return;
+
+  if (last_path_stamp_ != path_stamp_memory_)
+  {
+    idx_memory = 0;
+    goal_reached_ = false;
+    path_stamp_memory_ = last_path_stamp_;
+  }
+
+  local_path_stamp = last_path_stamp_;
+
   if (path_loaded_)
   {
     // Get the current pose
@@ -116,6 +132,7 @@ void PurePursuit::cmd_generator(nav_msgs::Odometry odom)
     {
       tf = tf_buffer_.lookupTransform(map_frame_id_, robot_frame_id_, ros::Time(0));
       // Detetmine the waypoint to track on the basis of 1) current_pose 2) waypoints_info 3) lookahead_distance
+      
       for (idx_=idx_memory; idx_ < path_.poses.size(); idx_++)
       {
         if (distance(path_.poses[idx_].pose.position, tf.transform.translation) > lookahead_distance_)
@@ -130,12 +147,10 @@ void PurePursuit::cmd_generator(nav_msgs::Odometry odom)
           break;
         }
       }
-
       // If approach the goal (last waypoint)
       if (!path_.poses.empty() && idx_ >= path_.poses.size())
       {
         KDL::Frame goal_offset = trans2base(path_.poses.back().pose, tf.transform);
-
         // Reach the goal
         if (fabs(goal_offset.p.x()) <= position_tolerance_)
         {
@@ -157,7 +172,7 @@ void PurePursuit::cmd_generator(nav_msgs::Odometry odom)
           double D = sqrt(b*b - 4*a*c);
           double x_ld = (-b + copysign(D,v_)) / (2*a);
           double y_ld = k_end * x_ld + l_end;
-          
+
           lookahead_.transform.translation.x = x_ld;
           lookahead_.transform.translation.y = y_ld;
           lookahead_.transform.translation.z = goal_offset.p.z();
@@ -165,18 +180,17 @@ void PurePursuit::cmd_generator(nav_msgs::Odometry odom)
                                       lookahead_.transform.rotation.z, lookahead_.transform.rotation.w);
         }
       }
-
       // Waypoint follower
       if (!goal_reached_)
       {
         v_ = copysign(v_max_, v_);
-        
+
         double lateral_offset = lookahead_.transform.translation.y;
         cmd_vel_.angular.z = std::min(2*v_/lookahead_distance_*lookahead_distance_*lateral_offset, w_max_);
 
         // Desired Ackermann steering_angle
         cmd_acker_.drive.steering_angle = std::min(atan2(2*lateral_offset*wheel_base_, lookahead_distance_*lookahead_distance_), delta_max_);
-        
+                
         // Linear velocity
         cmd_vel_.linear.x = v_;
         cmd_acker_.drive.speed = v_;
@@ -208,17 +222,13 @@ void PurePursuit::cmd_generator(nav_msgs::Odometry odom)
       lookahead_marker_.scale.x = 1;
       lookahead_marker_.scale.y = 1;
       lookahead_marker_.scale.z = 1;
-      lookahead_marker_.pose.orientation.x = 0.0;
-      lookahead_marker_.pose.orientation.y = 0.0;
-      lookahead_marker_.pose.orientation.z = 0.0;
       lookahead_marker_.pose.orientation.w = 1.0;
       lookahead_marker_.color.a = 1.0;
+
       if (!goal_reached_)
       {
         lookahead_marker_.id = idx_;
-        lookahead_marker_.pose.position.x = path_.poses[idx_].pose.position.x;
-        lookahead_marker_.pose.position.y = path_.poses[idx_].pose.position.y;
-        lookahead_marker_.pose.position.z = path_.poses[idx_].pose.position.z;
+        lookahead_marker_.pose.position = path_.poses[idx_].pose.position;
         lookahead_marker_.color.r = 0.0;
         lookahead_marker_.color.g = 1.0;
         lookahead_marker_.color.b = 0.0;
@@ -235,9 +245,7 @@ void PurePursuit::cmd_generator(nav_msgs::Odometry odom)
         lookahead_marker_.color.g = 0.0;
         lookahead_marker_.color.b = 0.0;
         if (idx_memory%5 == 0)
-        {
-          pub_marker_.publish(lookahead_marker_); 
-        }
+          pub_marker_.publish(lookahead_marker_);
       }
     }
     catch (tf2::TransformException &ex)
@@ -247,25 +255,27 @@ void PurePursuit::cmd_generator(nav_msgs::Odometry odom)
   }
 }
 
-void PurePursuit::waypoints_listener(nav_msgs::Path new_path)
-{ 
-  if (new_path.header.frame_id == map_frame_id_)
+void PurePursuit::waypoints_listener(const nav_msgs::Path& new_path)
+{
+  if (new_path.header.frame_id != map_frame_id_)
+  {
+    ROS_WARN_STREAM("Waypoints must be in frame " << map_frame_id_ << ", got " << new_path.header.frame_id);
+    return;
+  }
+
+  if (!new_path.poses.empty())
   {
     path_ = new_path;
-    idx_ = 0;
-    if (new_path.poses.size() > 0)
-    {
-      std::cout << "Received Waypoints" << std::endl;
-      path_loaded_ = true;
-    }
-    else
-    {
-      ROS_WARN_STREAM("Received empty waypoint!");
-    }
+    path_loaded_ = true;
+    idx_memory = 0;
+    last_path_stamp_ = new_path.header.stamp;
+
+    std::cout << "New path received with " << path_.poses.size() << " poses." << std::endl;
   }
   else
   {
-    ROS_WARN_STREAM("The waypoints must be published in the " << map_frame_id_ << " frame! Ignoring path in " << new_path.header.frame_id << " frame!");
+    ROS_WARN("Received empty path.");
+    path_loaded_ = false;
   }
 }
 

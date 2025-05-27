@@ -2,23 +2,23 @@
 
     <param name="/use_sim_time" value="true" />
 
-    <include file="$(find lego_loam)/launch/run.launch"/>
-
-    <node pkg="autonomy_stack" type="correct_odometry.py" name="correct_odometry"/>
-
     <arg name="wheel_base" default="4.995" doc="wheelbase"/>
 	<arg name="lookahead_distance" default="6.0" doc="lookahead distance"/>
-	<arg name="w_max" default="1.0" doc="max rotational velocity"/>
+	<arg name="linear_velocity" default="0.1" doc="linear velocity"/>
+    <arg name="w_max" default="1.0" doc="max rotational velocity"/>
 	<arg name="position_tolerance" default="0.2" doc="position tolerance"/>
 	<arg name="delta_vel" default="100.0" doc="steering angle velocity"/>
 	<arg name="acc" default="100.0" doc="acceleration"/>
 	<arg name="jerk" default="100.0" doc="jerk"/>
-	<arg name="delta_max" default="1.57" doc="steering angle limit"/>
+	<arg name="delta_max" default="1.22" doc="steering angle limit"/>
 	<arg name="map_frame_id" default="map" doc="map frame id"/>
 	<arg name="robot_frame_id" default="ego_vehicle" doc="robot frame id"/>
 	<arg name="lookahead_frame_id" default="lookahead" doc="lookahead frame id"/>
 	<arg name="acker_frame_id" default="rear_axle_midpoint" doc="ackermann frame id"/>
-		
+    <arg name="odom_topic" default="/odom" doc="odometry topic"/>
+    <arg name="path_topic" default="/waypoints" doc="path topic"/>
+	<arg name="ackermann_topic" default="/cmd_acker" doc="cmd ackermann topic"/>
+
 	<!---run pure_pursuit -->
 	<node pkg="pure_pursuit" type="pure_pursuit" name="pure_pursuit" output="screen" >
         <param name="wheelbase" value="$(arg wheel_base)"/>
@@ -33,9 +33,9 @@
         <param name="robot_frame_id" value="$(arg robot_frame_id)"/>
         <param name="lookahead_frame_id" value="$(arg lookahead_frame_id)"/>
         <param name="acker_frame_id" value="$(arg acker_frame_id)"/>
-        <remap from="/odom" to="/odom_correct" />
-        <remap from="/waypoints" to="/carla/ego_vehicle/waypoints_transformed" />
-        <remap from="/cmd_acker" to="/ackermann_cmd" />
+        <remap from="/odom" to="$(arg odom_topic)" />
+        <remap from="/waypoints" to="$(arg path_topic)" />
+        <remap from="/cmd_acker" to="$(arg ackermann_topic)" />
 	</node>
 
     <!--- Run Rviz-->
