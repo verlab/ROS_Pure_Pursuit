@@ -1,7 +1,4 @@
 <launch>
-
-    <param name="/use_sim_time" value="true" />
-
     <arg name="wheel_base" default="4.995" doc="wheelbase"/>
 	<arg name="lookahead_distance" default="6.0" doc="lookahead distance"/>
 	<arg name="linear_velocity" default="0.1" doc="linear velocity"/>
