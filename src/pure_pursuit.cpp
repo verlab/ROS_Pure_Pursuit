@@ -69,7 +69,7 @@ class PurePursuit
 
 };
 
-PurePursuit::PurePursuit() : lookahead_distance_(1.0), v_max_(0.1), v_(v_max_), w_max_(1.0), position_tolerance_(0.1), idx_(0),
+PurePursuit::PurePursuit() : lookahead_distance_(1.0), v_max_(8.0), v_(v_max_), w_max_(1.0), position_tolerance_(0.1), idx_(0),
                              goal_reached_(false), nh_private_("~"), tf_listener_(tf_buffer_),
                              map_frame_id_("map"), robot_frame_id_("base_link"), lookahead_frame_id_("lookahead")
 {
@@ -183,7 +183,8 @@ void PurePursuit::cmd_generator(nav_msgs::Odometry odom)
       // Waypoint follower
       if (!goal_reached_)
       {
-        v_ = copysign(v_max_, v_);
+        // v_ = copysign(v_max_, v_);
+        v_ = std::max(-v_max_, std::min(v_, v_max_));
 
         double lateral_offset = lookahead_.transform.translation.y;
         cmd_vel_.angular.z = std::min(2*v_/lookahead_distance_*lookahead_distance_*lateral_offset, w_max_);

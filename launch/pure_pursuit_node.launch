@@ -9,7 +9,7 @@
 	<arg name="jerk" default="100.0" doc="jerk"/>
 	<arg name="delta_max" default="1.22" doc="steering angle limit"/>
 	<arg name="map_frame_id" default="map" doc="map frame id"/>
-	<arg name="robot_frame_id" default="ego_vehicle" doc="robot frame id"/>
+	<arg name="robot_frame_id" default="base_link" doc="robot frame id"/>
 	<arg name="lookahead_frame_id" default="lookahead" doc="lookahead frame id"/>
 	<arg name="acker_frame_id" default="rear_axle_midpoint" doc="ackermann frame id"/>
     <arg name="odom_topic" default="/odom" doc="odometry topic"/>
@@ -20,6 +20,7 @@
 	<node pkg="pure_pursuit" type="pure_pursuit" name="pure_pursuit" output="screen" >
         <param name="wheelbase" value="$(arg wheel_base)"/>
         <param name="lookahead_distance" value="$(arg lookahead_distance)"/>
+        <param name="linear_velocity" value="$(arg linear_velocity)"/>
         <param name="max_rotational_velocity" value="$(arg w_max)"/>
         <param name="position_tolerance" value="$(arg position_tolerance)"/>
         <param name="steering_angle_velocity" value="$(arg delta_vel)"/>
