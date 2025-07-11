@@ -19,9 +19,18 @@ jobs:
 
       - name: Install catkin tools and deps
         run: |
-          sudo apt update && sudo apt install -y \
-          python3-catkin-tools \
-          python3-pip
+          sudo apt update
+          sudo apt install -y python3-catkin-tools python3-pip
+          sudo apt install -y \
+            ros-noetic-ackermann-msgs \
+            ros-noetic-orocos-kdl \
+            ros-noetic-tf2 \
+            ros-noetic-tf2-ros \
+            ros-noetic-geometry-msgs \
+            ros-noetic-nav-msgs \
+            ros-noetic-roscpp \
+            ros-noetic-std-msgs \
+            ros-noetic-rospy
           
       - name: Build workspace
         shell: bash
