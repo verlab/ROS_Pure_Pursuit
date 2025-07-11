@@ -29,7 +29,8 @@ jobs:
             ros-noetic-nav-msgs \
             ros-noetic-roscpp \
             ros-noetic-std-msgs \
-            ros-noetic-rospy
+            ros-noetic-rospy \
+            liborocos-kdl-dev
           
       - name: Build workspace
         shell: bash
