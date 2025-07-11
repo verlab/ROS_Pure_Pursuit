@@ -1,5 +1,5 @@
 # Pure Pursuit
-![passing](https://img.shields.io/badge/ROSMelodic-passing-green.svg "The project has been test on ROS-Melodic")
+![passing](https://github.com/verlab/ROS_Pure_Pursuit/actions/workflows/workflow.yml/badge.svg?branch=ci-cd)
 ![license](https://img.shields.io/badge/License-Apache2-blue.svg "In line with Autoware.ai")
 
 ![Demo.png](./demo.png)
