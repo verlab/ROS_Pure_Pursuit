@@ -23,7 +23,6 @@ jobs:
           sudo apt install -y python3-catkin-tools python3-pip
           sudo apt install -y \
             ros-noetic-ackermann-msgs \
-            ros-noetic-orocos-kdl \
             ros-noetic-tf2 \
             ros-noetic-tf2-ros \
             ros-noetic-geometry-msgs \
